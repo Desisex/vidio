@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="nav-container">
+            <h1><i class="fas fa-crown"></i> Admin Panel</h1>
+            <div>
+                <span id="adminEmail"></span>
+                <button id="logoutBtn" class="btn-logout">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="admin-container">
+        <aside class="sidebar">
+            <ul>
+                <li class="active" data-tab="videos"><i class="fas fa-video"></i> Videos</li>
+                <li data-tab="upload"><i class="fas fa-upload"></i> Upload</li>
+                <li data-tab="payments"><i class="fas fa-credit-card"></i> Payments</li>
+                <li data-tab="users"><i class="fas fa-users"></i> Users</li>
+            </ul>
+        </aside>
+
+        <main class="admin-content">
+            <!-- Videos Tab -->
+            <div id="videosTab" class="tab-content active">
+                <h2>Manage Videos</h2>
+                <div id="pendingVideos">
+                    <h3>Pending Approval</h3>
+                    <div id="pendingList"></div>
+                </div>
+                <div id="approvedVideos">
+                    <h3>Approved Videos</h3>
+                    <div id="approvedList"></div>
+                </div>
+            </div>
+
+            <!-- Upload Tab -->
+            <div id="uploadTab" class="tab-content">
+                <h2>Upload New Video</h2>
+                <form id="uploadForm">
+                    <input type="text" id="videoTitle" placeholder="Video Title" required>
+                    <textarea id="videoDescription" placeholder="Video Description"></textarea>
+                    <input type="url" id="videoUrl" placeholder="Video URL (YouTube/Vimeo)" required>
+                    <input type="url" id="thumbnailUrl" placeholder="Thumbnail URL">
+                    <label>
+                        <input type="checkbox" id="isHighlight"> Mark as Highlight
+                    </label>
+                    <button type="submit">Upload Video</button>
+                </form>
+            </div>
+
+            <!-- Payments Tab -->
+            <div id="paymentsTab" class="tab-content">
+                <h2>Payment History</h2>
+                <div id="paymentsList"></div>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="usersTab" class="tab-content">
+                <h2>User Management</h2>
+                <div id="usersList"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

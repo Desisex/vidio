@@ -1,0 +1,245 @@
+// Admin authentication
+auth.onAuthStateChanged(async user => {
+    if (!user) {
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    // Check if user is admin
+    const doc = await db.collection('users').doc(user.uid).get();
+    if (!doc.exists || !doc.data().isAdmin) {
+        alert('Access denied. Admin only.');
+        auth.signOut();
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    document.getElementById('adminEmail').textContent = user.email;
+    loadPendingVideos();
+    loadApprovedVideos();
+    loadPayments();
+    loadUsers();
+});
+
+// Tab switching
+document.querySelectorAll('.sidebar li').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.sidebar li').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        const tabId = this.dataset.tab;
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById(tabId + 'Tab').classList.add('active');
+    });
+});
+
+// Load pending videos
+async function loadPendingVideos() {
+    const container = document.getElementById('pendingList');
+    try {
+        const snapshot = await db.collection('videos')
+            .where('status', '==', 'pending')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        if (snapshot.empty) {
+            container.innerHTML = '<p>No pending videos</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        snapshot.forEach(doc => {
+            const video = { id: doc.id, ...doc.data() };
+            container.innerHTML += `
+                <div class="admin-video-item">
+                    <img src="${video.thumbnail || 'https://via.placeholder.com/100x60'}" alt="${video.title}">
+                    <div>
+                        <h4>${video.title}</h4>
+                        <p>${video.description || ''}</p>
+                    </div>
+                    <div class="actions">
+                        <button onclick="approveVideo('${video.id}')" class="btn-approve">Approve</button>
+                        <button onclick="rejectVideo('${video.id}')" class="btn-reject">Reject</button>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (error) {
+        console.error('Error loading pending videos:', error);
+    }
+}
+
+// Load approved videos
+async function loadApprovedVideos() {
+    const container = document.getElementById('approvedList');
+    try {
+        const snapshot = await db.collection('videos')
+            .where('status', '==', 'approved')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        if (snapshot.empty) {
+            container.innerHTML = '<p>No approved videos</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        snapshot.forEach(doc => {
+            const video = { id: doc.id, ...doc.data() };
+            container.innerHTML += `
+                <div class="admin-video-item">
+                    <img src="${video.thumbnail || 'https://via.placeholder.com/100x60'}" alt="${video.title}">
+                    <div>
+                        <h4>${video.title}</h4>
+                        <p>${video.description || ''}</p>
+                        ${video.isHighlight ? '<span class="badge-highlight">🔥 Highlight</span>' : ''}
+                    </div>
+                    <div class="actions">
+                        <button onclick="deleteVideo('${video.id}')" class="btn-delete">Delete</button>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (error) {
+        console.error('Error loading approved videos:', error);
+    }
+}
+
+// Approve video
+async function approveVideo(videoId) {
+    if (!confirm('Approve this video?')) return;
+    try {
+        await db.collection('videos').doc(videoId).update({
+            status: 'approved',
+            approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert('Video approved!');
+        loadPendingVideos();
+        loadApprovedVideos();
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Reject video
+async function rejectVideo(videoId) {
+    if (!confirm('Reject this video?')) return;
+    try {
+        await db.collection('videos').doc(videoId).delete();
+        alert('Video rejected and deleted!');
+        loadPendingVideos();
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Delete video
+async function deleteVideo(videoId) {
+    if (!confirm('Delete this video permanently?')) return;
+    try {
+        await db.collection('videos').doc(videoId).delete();
+        alert('Video deleted!');
+        loadApprovedVideos();
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Upload video
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const videoData = {
+        title: document.getElementById('videoTitle').value,
+        description: document.getElementById('videoDescription').value,
+        videoUrl: document.getElementById('videoUrl').value,
+        thumbnail: document.getElementById('thumbnailUrl').value || null,
+        isHighlight: document.getElementById('isHighlight').checked,
+        status: 'pending',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        uploadedBy: auth.currentUser.uid
+    };
+    
+    try {
+        await db.collection('videos').add(videoData);
+        alert('Video uploaded successfully! Waiting for admin approval.');
+        document.getElementById('uploadForm').reset();
+        loadPendingVideos();
+    } catch (error) {
+        alert('Error uploading video: ' + error.message);
+    }
+});
+
+// Load payments
+async function loadPayments() {
+    const container = document.getElementById('paymentsList');
+    try {
+        const snapshot = await db.collection('payments')
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+            .get();
+        
+        if (snapshot.empty) {
+            container.innerHTML = '<p>No payments recorded</p>';
+            return;
+        }
+        
+        container.innerHTML = '<table><thead><tr><th>User</th><th>Amount</th><th>Date</th><th>Expiry</th></tr></thead><tbody>';
+        snapshot.forEach(async doc => {
+            const payment = doc.data();
+            const userDoc = await db.collection('users').doc(payment.userId).get();
+            const email = userDoc.exists ? userDoc.data().email : 'Unknown';
+            const date = payment.timestamp?.toDate().toLocaleDateString() || 'N/A';
+            const expiry = payment.expiryDate?.toDate().toLocaleDateString() || 'N/A';
+            
+            container.innerHTML += `
+                <tr>
+                    <td>${email}</td>
+                    <td>₹${payment.amount}</td>
+                    <td>${date}</td>
+                    <td>${expiry}</td>
+                </tr>
+            `;
+        });
+        container.innerHTML += '</tbody></table>';
+    } catch (error) {
+        console.error('Error loading payments:', error);
+    }
+}
+
+// Load users
+async function loadUsers() {
+    const container = document.getElementById('usersList');
+    try {
+        const snapshot = await db.collection('users').get();
+        
+        if (snapshot.empty) {
+            container.innerHTML = '<p>No users found</p>';
+            return;
+        }
+        
+        container.innerHTML = '<table><thead><tr><th>Email</th><th>Access</th><th>Access Expiry</th></tr></thead><tbody>';
+        snapshot.forEach(doc => {
+            const user = doc.data();
+            const expiry = user.accessExpiry?.toDate().toLocaleDateString() || 'N/A';
+            const hasAccess = user.hasAccess ? '✅ Yes' : '❌ No';
+            
+            container.innerHTML += `
+                <tr>
+                    <td>${user.email}</td>
+                    <td>${hasAccess}</td>
+                    <td>${expiry}</td>
+                </tr>
+            `;
+        });
+        container.innerHTML += '</tbody></table>';
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+// Logout
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    auth.signOut();
+    window.location.href = 'index.html';
+});

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Streaming Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-video"></i>
+                <span>StreamHub</span>
+            </div>
+            <div class="nav-links">
+                <a href="#highlights">Highlights</a>
+                <a href="#videos">All Videos</a>
+                <button id="authBtn" class="btn-auth">Login</button>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Highlights Section -->
+        <section id="highlights" class="section">
+            <h2>🔥 Highlights</h2>
+            <div id="highlightsContainer" class="video-grid">
+                <!-- Dynamic content -->
+            </div>
+        </section>
+
+        <!-- All Videos Section -->
+        <section id="videos" class="section">
+            <h2>🎬 All Videos</h2>
+            <div id="videosContainer" class="video-grid">
+                <!-- Dynamic content -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Access All Videos</h2>
+            <p>Get 24-hour access to all videos for just ₹10</p>
+            <button id="payBtn" class="btn-pay">
+                <i class="fas fa-credit-card"></i> Pay ₹10
+            </button>
+            <div id="paymentStatus"></div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Login</h2>
+            <form id="loginForm">
+                <input type="email" id="email" placeholder="Email" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+                <p>Don't have an account? <a href="#" id="signupToggle">Sign up</a></p>
+            </form>
+            <form id="signupForm" style="display:none">
+                <input type="email" id="signupEmail" placeholder="Email" required>
+                <input type="password" id="signupPassword" placeholder="Password" required>
+                <button type="submit">Sign Up</button>
+                <p>Already have an account? <a href="#" id="loginToggle">Login</a></p>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

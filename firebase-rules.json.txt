@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "videos": {
+      ".read": true,
+      ".write": "auth != null && auth.uid != null && root.child('users/' + auth.uid + '/isAdmin').val() == true"
+    },
+    "users": {
+      ".read": "auth != null && auth.uid != null && root.child('users/' + auth.uid + '/isAdmin').val() == true",
+      ".write": "auth != null && auth.uid != null && (root.child('users/' + auth.uid + '/isAdmin').val() == true || auth.uid == $uid)"
+    },
+    "payments": {
+      ".read": "auth != null && auth.uid != null && root.child('users/' + auth.uid + '/isAdmin').val() == true",
+      ".write": "auth != null && auth.uid != null"
+    }
+  }
+}

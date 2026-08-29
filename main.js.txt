@@ -1,0 +1,159 @@
+let allVideos = [];
+let hasAccess = false;
+
+// Load videos
+async function loadVideos() {
+    try {
+        const snapshot = await db.collection('videos')
+            .where('status', '==', 'approved')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        allVideos = [];
+        snapshot.forEach(doc => {
+            allVideos.push({ id: doc.id, ...doc.data() });
+        });
+        
+        displayHighlights();
+        displayAllVideos();
+    } catch (error) {
+        console.error('Error loading videos:', error);
+    }
+}
+
+// Display highlights
+function displayHighlights() {
+    const container = document.getElementById('highlightsContainer');
+    const highlights = allVideos.filter(v => v.isHighlight);
+    
+    if (highlights.length === 0) {
+        container.innerHTML = '<p>No highlights available</p>';
+        return;
+    }
+    
+    container.innerHTML = highlights.slice(0, 4).map(video => createVideoCard(video)).join('');
+}
+
+// Display all videos
+function displayAllVideos() {
+    const container = document.getElementById('videosContainer');
+    
+    if (allVideos.length === 0) {
+        container.innerHTML = '<p>No videos available</p>';
+        return;
+    }
+    
+    container.innerHTML = allVideos.map(video => createVideoCard(video)).join('');
+}
+
+// Create video card
+function createVideoCard(video) {
+    const isLocked = !hasAccess && !video.isHighlight;
+    
+    return `
+        <div class="video-card ${isLocked ? 'video-locked' : ''}" onclick="${isLocked ? 'openPaymentModal()' : `playVideo('${video.id}')`}">
+            <img src="${video.thumbnail || 'https://via.placeholder.com/300x200/1a1a2e/e94560?text=Video'}" alt="${video.title}" class="video-thumbnail">
+            <div class="video-info">
+                <h3>${video.title}</h3>
+                <p>${video.description || ''}</p>
+                ${video.isHighlight ? '<span class="video-badge">🔥 Highlight</span>' : ''}
+                ${isLocked ? '<span class="video-badge" style="background: #666;">🔒 Premium</span>' : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Play video
+function playVideo(videoId) {
+    const video = allVideos.find(v => v.id === videoId);
+    if (!video) return;
+    
+    // Open video in new window or iframe
+    window.open(video.videoUrl, '_blank');
+}
+
+// Check user access
+async function checkUserAccess(userId) {
+    try {
+        const doc = await db.collection('users').doc(userId).get();
+        if (doc.exists) {
+            const data = doc.data();
+            if (data.hasAccess && data.accessExpiry) {
+                const expiry = data.accessExpiry.toDate();
+                hasAccess = expiry > new Date();
+                if (!hasAccess) {
+                    // Update user access
+                    await db.collection('users').doc(userId).update({
+                        hasAccess: false
+                    });
+                }
+            }
+        }
+        updateUIForAccess();
+    } catch (error) {
+        console.error('Error checking access:', error);
+    }
+}
+
+// Update UI based on access
+function updateUIForAccess() {
+    displayAllVideos();
+}
+
+// Open payment modal
+function openPaymentModal() {
+    if (!currentUser) {
+        alert('Please login first!');
+        openAuthModal();
+        return;
+    }
+    document.getElementById('paymentModal').style.display = 'block';
+}
+
+// Payment processing
+document.getElementById('payBtn').addEventListener('click', async () => {
+    if (!currentUser) {
+        alert('Please login first!');
+        return;
+    }
+    
+    const statusDiv = document.getElementById('paymentStatus');
+    statusDiv.textContent = 'Processing payment...';
+    
+    try {
+        // Here you would integrate with a payment gateway
+        // For demo, we'll simulate payment
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Grant access for 24 hours
+        const expiryDate = new Date();
+        expiryDate.setHours(expiryDate.getHours() + 24);
+        
+        await db.collection('users').doc(currentUser.uid).update({
+            hasAccess: true,
+            accessExpiry: expiryDate,
+            lastPayment: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Record payment
+        await db.collection('payments').add({
+            userId: currentUser.uid,
+            amount: 10,
+            currency: 'INR',
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            expiryDate: expiryDate
+        });
+        
+        hasAccess = true;
+        statusDiv.innerHTML = '✅ Payment successful! You now have 24-hour access.';
+        document.getElementById('paymentModal').style.display = 'none';
+        updateUIForAccess();
+        alert('Access granted for 24 hours!');
+        
+    } catch (error) {
+        statusDiv.innerHTML = '❌ Payment failed: ' + error.message;
+    }
+});
+
+// Load videos on page load
+document.addEventListener('DOMContentLoaded', loadVideos);

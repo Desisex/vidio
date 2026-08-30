@@ -12,20 +12,18 @@
     .btn-register { background: #28a745; color: white; }
     
     .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; }
-    .video-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .video-preview { position: relative; padding-bottom: 56.25%; height: 0; }
+    .video-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; }
+    .video-preview { position: relative; padding-bottom: 56.25%; height: 0; pointer-events: none; }
     .video-preview iframe { position: absolute; top:0; left:0; width:100%; height:100%; border:0; }
     .card-body { padding: 15px; }
     .card-body h3 { margin: 0 0 10px 0; font-size: 1.1rem; }
-    .card-body p { color: #666; font-size: 0.9rem; margin-bottom: 15px; }
-    .btn-watch { display: block; width: 100%; text-align: center; padding: 10px 0; background: #ff4757; color: white; border: none; border-radius: 4px; font-weight: bold; text-decoration: none; cursor: pointer; }
-    .btn-watch:hover { background: #e84118; }
+    .btn-watch { display: block; width: 100%; text-align: center; padding: 10px 0; background: #ff4757; color: white; border: none; border-radius: 4px; font-weight: bold; }
   </style>
 </head>
 <body>
 
   <header>
-    <h2>🎬 Video Gallery</h2>
+    <h2>🎬 Video Gallery Highlights</h2>
     <div class="auth-btns">
       <a href="login.html" class="btn btn-login">Login</a>
       <a href="register.html" class="btn btn-register">Register</a>
@@ -38,52 +36,39 @@
     import { auth } from "./firebase-config.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // Public Videos (Highlight Preview Clips)
     const GALLERY_VIDEOS = [
-      {
-        id: "vid_1",
-        title: "Sample Video 1 (Highlight Preview)",
-        description: "Watch short highlight. Register to watch the full video.",
-        previewYoutubeId: "aqz-KE-bpKQ" // Trailer/Preview ID
-      },
-      {
-        id: "vid_2",
-        title: "Sample Video 2 (Highlight Preview)",
-        description: "Watch short highlight. Register to watch the full video.",
-        previewYoutubeId: "LXb3EKWsInQ" // Trailer/Preview ID
-      }
+      { id: "vid_1", title: "Sample Video 1", previewId: "aqz-KE-bpKQ" },
+      { id: "vid_2", title: "Sample Video 2", previewId: "LXb3EKWsInQ" }
     ];
 
     const galleryElem = document.getElementById("gallery");
 
-    // Render highlight video cards
     GALLERY_VIDEOS.forEach(video => {
       const card = document.createElement("div");
       card.className = "video-card";
+      // Auto-play, muted, loop, starting at 0 and ending at 6 seconds
       card.innerHTML = `
         <div class="video-preview">
-          <iframe src="https://www.youtube.com/embed/${video.previewYoutubeId}?controls=1" allowfullscreen></iframe>
+          <iframe src="https://www.youtube.com/embed/${video.previewId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.previewId}&start=0&end=6" allow="autoplay"></iframe>
         </div>
         <div class="card-body">
           <h3>${video.title}</h3>
-          <p>${video.description}</p>
-          <button class="btn-watch" onclick="handleWatchClick()">Watch Full Video (₹10 / 24h)</button>
+          <button class="btn-watch">Watch Full Video (₹10 / 24h)</button>
         </div>
       `;
+      
+      card.addEventListener("click", () => {
+        onAuthStateChanged(auth, (user) => {
+          if (user) {
+            window.location.href = "dashboard.html";
+          } else {
+            window.location.href = "register.html";
+          }
+        });
+      });
+
       galleryElem.appendChild(card);
     });
-
-    // Check if logged in when clicking full video
-    window.handleWatchClick = () => {
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          window.location.href = "dashboard.html";
-        } else {
-          // Redirect to register if not logged in
-          window.location.href = "register.html";
-        }
-      });
-    };
   </script>
 </body>
 </html>

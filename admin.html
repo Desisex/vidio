@@ -10,9 +10,10 @@
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
     th { background-color: #007bff; color: white; }
-    .btn-approve { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .btn-approve { background: #28a745; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .btn-approve:hover { background: #218838; }
     .btn-refresh { background: #17a2b8; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; float: right; }
+    .no-data { text-align: center; padding: 20px; font-style: italic; color: #666; }
   </style>
 </head>
 <body>
@@ -20,7 +21,7 @@
   <div class="card">
     <button id="refresh-btn" class="btn-refresh">Refresh List</button>
     <h2>Admin - Pending Access Requests</h2>
-    <p>Approve user transactions to grant 24-hour video access.</p>
+    <p>Approve user payment transactions to grant 24-hour video access.</p>
 
     <div id="loading">Loading requests...</div>
     
@@ -39,7 +40,7 @@
 
   <script type="module">
     import { db } from "./firebase-config.js";
-    import { collectionGroup, query, where, getDocs, doc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collection, getDocs, doc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const loadingElem = document.getElementById("loading");
     const tableElem = document.getElementById("requests-table");
@@ -54,11 +55,35 @@
       tableBody.innerHTML = "";
 
       try {
-        // Query all 'access' subcollections across all users where status is 'pending'
-        const q = query(collectionGroup(db, "access"), where("status", "==", "pending"));
-        const querySnapshot = await getDocs(q);
+        // Fetch all registered users
+        const usersSnap = await getDocs(collection(db, "users"));
+        let pendingCount = 0;
 
-        if (querySnapshot.empty) {
+        // Loop through each user's access subcollection
+        for (const userDoc of usersSnap.docs) {
+          const accessSnap = await getDocs(collection(db, "users", userDoc.id, "access"));
+          
+          accessSnap.forEach((accessDoc) => {
+            const data = accessDoc.data();
+            
+            // Render only transactions waiting for approval
+            if (data.status === "pending") {
+              pendingCount++;
+              const row = document.createElement("tr");
+              row.innerHTML = `
+                <td>${data.userEmail || userDoc.id}</td>
+                <td>${data.videoId || accessDoc.id}</td>
+                <td><strong>${data.txnId || "N/A"}</strong></td>
+                <td>
+                  <button class="btn-approve" data-path="${accessDoc.ref.path}">Approve (Grant 24h)</button>
+                </td>
+              `;
+              tableBody.appendChild(row);
+            }
+          });
+        }
+
+        if (pendingCount === 0) {
           loadingElem.innerText = "No pending approval requests found.";
           return;
         }
@@ -66,23 +91,7 @@
         loadingElem.style.display = "none";
         tableElem.style.display = "table";
 
-        querySnapshot.forEach((documentSnap) => {
-          const data = documentSnap.data();
-          const docRef = documentSnap.ref;
-
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${data.userEmail || "Unknown User"}</td>
-            <td>${data.videoId || "Video"}</td>
-            <td><strong>${data.txnId || "N/A"}</strong></td>
-            <td>
-              <button class="btn-approve" data-path="${docRef.path}">Approve (Grant 24h)</button>
-            </td>
-          `;
-          tableBody.appendChild(row);
-        });
-
-        // Attach event handlers to dynamic approve buttons
+        // Bind click events to approve buttons
         document.querySelectorAll(".btn-approve").forEach(button => {
           button.addEventListener("click", async (e) => {
             const path = e.target.getAttribute("data-path");
@@ -95,7 +104,7 @@
       }
     }
 
-    // Grant 24-hour access by calculating expiration time
+    // Set status to active and calculate 24-hour expiration timestamp
     async function approveRequest(docPath) {
       try {
         const now = new Date();
@@ -107,14 +116,14 @@
           expiresAt: Timestamp.fromDate(expiresAt)
         });
 
-        alert("Access approved for 24 hours!");
+        alert("Access approved! 24-hour pass activated.");
         await loadPendingRequests();
       } catch (err) {
         alert("Failed to approve: " + err.message);
       }
     }
 
-    // Initial fetch on page load
+    // Load initial list on page start
     loadPendingRequests();
   </script>
 </body>

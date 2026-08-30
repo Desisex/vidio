@@ -13,7 +13,6 @@
     .btn-approve { background: #28a745; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .btn-approve:hover { background: #218838; }
     .btn-refresh { background: #17a2b8; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; float: right; }
-    .no-data { text-align: center; padding: 20px; font-style: italic; color: #666; }
   </style>
 </head>
 <body>
@@ -40,7 +39,7 @@
 
   <script type="module">
     import { db } from "./firebase-config.js";
-    import { collection, getDocs, doc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collection, collectionGroup, getDocs, doc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const loadingElem = document.getElementById("loading");
     const tableElem = document.getElementById("requests-table");
@@ -55,33 +54,27 @@
       tableBody.innerHTML = "";
 
       try {
-        // Fetch all registered users
-        const usersSnap = await getDocs(collection(db, "users"));
+        // Fetch all documents across all access subcollections directly
+        const querySnapshot = await getDocs(collectionGroup(db, "access"));
         let pendingCount = 0;
 
-        // Loop through each user's access subcollection
-        for (const userDoc of usersSnap.docs) {
-          const accessSnap = await getDocs(collection(db, "users", userDoc.id, "access"));
+        querySnapshot.forEach((documentSnap) => {
+          const data = documentSnap.data();
           
-          accessSnap.forEach((accessDoc) => {
-            const data = accessDoc.data();
-            
-            // Render only transactions waiting for approval
-            if (data.status === "pending") {
-              pendingCount++;
-              const row = document.createElement("tr");
-              row.innerHTML = `
-                <td>${data.userEmail || userDoc.id}</td>
-                <td>${data.videoId || accessDoc.id}</td>
-                <td><strong>${data.txnId || "N/A"}</strong></td>
-                <td>
-                  <button class="btn-approve" data-path="${accessDoc.ref.path}">Approve (Grant 24h)</button>
-                </td>
-              `;
-              tableBody.appendChild(row);
-            }
-          });
-        }
+          if (data.status === "pending") {
+            pendingCount++;
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${data.userEmail || "Unknown User"}</td>
+              <td>${data.videoId || documentSnap.id}</td>
+              <td><strong>${data.txnId || "N/A"}</strong></td>
+              <td>
+                <button class="btn-approve" data-path="${documentSnap.ref.path}">Approve (Grant 24h)</button>
+              </td>
+            `;
+            tableBody.appendChild(row);
+          }
+        });
 
         if (pendingCount === 0) {
           loadingElem.innerText = "No pending approval requests found.";
@@ -91,7 +84,6 @@
         loadingElem.style.display = "none";
         tableElem.style.display = "table";
 
-        // Bind click events to approve buttons
         document.querySelectorAll(".btn-approve").forEach(button => {
           button.addEventListener("click", async (e) => {
             const path = e.target.getAttribute("data-path");
@@ -104,11 +96,10 @@
       }
     }
 
-    // Set status to active and calculate 24-hour expiration timestamp
     async function approveRequest(docPath) {
       try {
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Current time + 24 Hours
+        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
         await updateDoc(doc(db, docPath), {
           status: "active",
@@ -123,7 +114,6 @@
       }
     }
 
-    // Load initial list on page start
     loadPendingRequests();
   </script>
 </body>

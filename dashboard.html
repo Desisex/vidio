@@ -2,66 +2,141 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Video Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; }
+    .card { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+    .btn:hover { background: #0056b3; }
+    .status-badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; margin-bottom: 15px; }
+    .pending { background: #ffeba open; background: #fff3cd; color: #856404; }
+    .expired { background: #f8d7da; color: #721c24; }
+    .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; }
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    input[type="text"] { width: 95%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+  </style>
 </head>
 <body>
-  <h2>Available Videos</h2>
-  <div id="video-container"></div>
 
-  <!-- Type="module" allows ES6 module imports like firebase-config.js -->
+  <div class="card">
+    <div id="user-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <span id="user-email">Loading user...</span>
+      <button id="logout-btn" class="btn" style="background: #dc3545;">Logout</button>
+    </div>
+
+    <hr style="margin: 20px 0;">
+
+    <div id="content-area">
+      <p>Checking access status...</p>
+    </div>
+  </div>
+
   <script type="module">
     import { auth, db } from "./firebase-config.js";
-    import { monitorAuthState } from "./auth.js";
-    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { monitorAuthState, logoutUser } from "./auth.js";
+    import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Redirect to login if user isn't logged in
+    // Set the target video settings
+    const TARGET_VIDEO_ID = "sample_video_1";
+    const YOUTUBE_VIDEO_ID = "YOUR_YOUTUBE_VIDEO_ID_HERE"; // Replace with your unlisted YouTube video ID
+    const UPI_ID = "yourname@upi"; // Replace with your actual UPI ID
+
+    // Attach logout event
+    document.getElementById("logout-btn").addEventListener("click", logoutUser);
+
+    // 1. Monitor Authentication State
     monitorAuthState(
-      (user) => {
-        loadVideosForUser(user.uid);
+      async (user) => {
+        document.getElementById("user-email").innerText = user.email;
+        await renderDashboard(user);
       },
       () => {
+        // Redirect to login if not authenticated
         window.location.href = "index.html";
       }
     );
 
-    async function loadVideosForUser(userId) {
-      const videoId = "sample_video_1";
-      const container = document.getElementById("video-container");
+    // 2. Fetch status and render core content UI
+    async function renderDashboard(user) {
+      const container = document.getElementById("content-area");
+      const accessRef = doc(db, "users", user.uid, "access", TARGET_VIDEO_ID);
+      const snap = await getDoc(accessRef);
 
-      // Check if user has an active 24-hour access pass in Firestore
-      const accessRef = doc(db, "users", userId, "access", videoId);
-      const accessSnap = await getDoc(accessRef);
+      let status = "none";
+      let expiresAt = null;
 
-      let hasAccess = false;
-      if (accessSnap.exists()) {
-        const data = accessSnap.data();
-        const now = new Date();
-        const expiresAt = data.expiresAt.toDate();
-        if (now < expiresAt) {
-          hasAccess = true;
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.status === "pending") {
+          status = "pending";
+        } else if (data.status === "active") {
+          const now = new Date();
+          expiresAt = data.expiresAt.toDate();
+          status = now < expiresAt ? "approved" : "expired";
         }
       }
 
-      if (hasAccess) {
-        // Show FULL YouTube Video (Replace YOUTUBE_VIDEO_ID with your video ID)
+      // State UI Rendering logic
+      if (status === "approved") {
+        const timeLeft = Math.round((expiresAt - new Date()) / (1000 * 60 * 60));
         container.innerHTML = `
-          <h3>Full Access Unlocked</h3>
-          <iframe width="560" height="315" 
-                  src="https://www.youtube.com/embed/YOUTUBE_VIDEO_ID?autoplay=1" 
-                  frameborder="0" allowfullscreen>
-          </iframe>
+          <h3>Full Video Access Unlocked</h3>
+          <p style="color: green;"><strong>Access Expires In:</strong> ~${timeLeft} hours</p>
+          <div class="video-container">
+            <iframe src="https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}?autoplay=1" allowfullscreen></iframe>
+          </div>
         `;
-      } else {
-        // Show Template / Preview Only + Unlock Button
+      } 
+      else if (status === "pending") {
         container.innerHTML = `
-          <h3>Video Template (Preview)</h3>
-          <p>Pay ₹10 to unlock 24-hour full access to this video.</p>
-          <button id="pay-button">Unlock Full Video (₹10 for 24 hours)</button>
+          <div class="status-badge pending">Approval Pending</div>
+          <h3>Payment Submitted</h3>
+          <p>Your payment request is waiting for admin verification. Once verified, the video will unlock automatically for 24 hours.</p>
+          <button class="btn" onclick="window.location.reload()">Check Status</button>
+        `;
+      } 
+      else {
+        // State is either 'none' or 'expired'
+        const expiredNotice = status === "expired" ? `<div class="status-badge expired">Pass Expired</div>` : "";
+        
+        container.innerHTML = `
+          ${expiredNotice}
+          <h3>Unlock Premium Video Pass</h3>
+          <p>Pay <strong>₹10</strong> via UPI to get 24-hour access to the full video.</p>
+          <div style="background: #e9ecef; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+            <strong>Send ₹10 to UPI ID:</strong> <span style="color: #d9534f; font-family: monospace;">${UPI_ID}</span>
+          </div>
+          <form id="payment-form">
+            <label for="txnId"><strong>Enter 12-digit UPI / UTR Reference Number:</strong></label>
+            <input type="text" id="txnId" placeholder="e.g. 324156789012" required pattern="[A-Za-z0-9]{8,20}" />
+            <button type="submit" class="btn">Submit Transaction ID</button>
+          </form>
         `;
 
-        document.getElementById("pay-button").addEventListener("click", () => {
-          alert("Payment gateway needed here to set the 24-hour pass in Firestore.");
+        // Attach submission handler to the payment form
+        document.getElementById("payment-form").addEventListener("submit", (e) => submitTransaction(e, user.uid, user.email));
+      }
+    }
+
+    // 3. Store payment request in Firestore
+    async function submitTransaction(event, userId, userEmail) {
+      event.preventDefault();
+      const txnId = document.getElementById("txnId").value.trim();
+
+      try {
+        await setDoc(doc(db, "users", userId, "access", TARGET_VIDEO_ID), {
+          videoId: TARGET_VIDEO_ID,
+          txnId: txnId,
+          userEmail: userEmail,
+          status: "pending",
+          requestedAt: new Date()
         });
+
+        alert("Transaction ID submitted successfully!");
+        window.location.reload();
+      } catch (err) {
+        alert("Submission failed: " + err.message);
       }
     }
   </script>

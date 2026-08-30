@@ -3,37 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video Dashboard</title>
+  <title>Subscriber Dashboard</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; }
-    .card { background: white; padding: 20px; border-radius: 8px; max-width: 650px; margin: 0 auto 20px auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .card { background: white; padding: 20px; border-radius: 8px; max-width: 1000px; margin: 0 auto 20px auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
-    .btn:hover { background: #0056b3; }
     .status-badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; margin-bottom: 15px; }
     .pending { background: #fff3cd; color: #856404; }
     .expired { background: #f8d7da; color: #721c24; }
-    .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; border-radius: 6px; }
-    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+    .video-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .thumb-container { position: relative; padding-bottom: 56.25%; height: 0; background: #000; }
+    .thumb-container img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; }
+    .card-info { padding: 15px; }
+    .btn-open { display: block; text-align: center; padding: 10px; background: #28a745; color: white; border-radius: 4px; text-decoration: none; font-weight: bold; margin-top: 10px; }
     input[type="text"] { width: 95%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
-    select { padding: 8px; width: 100%; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <div id="user-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
       <span id="user-email">Loading user...</span>
       <button id="logout-btn" class="btn" style="background: #dc3545;">Logout</button>
     </div>
 
     <hr style="margin: 20px 0;">
-
-    <label for="video-select"><strong>Select Video Gallery:</strong></label>
-    <select id="video-select"></select>
-
-    <div id="content-area">
-      <p>Checking access status...</p>
-    </div>
+    <div id="content-area"><p>Checking subscription...</p></div>
   </div>
 
   <script type="module">
@@ -41,59 +38,24 @@
     import { monitorAuthState, logoutUser } from "./auth.js";
     import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 1. Gallery Videos
     const SAMPLE_VIDEOS = [
-      {
-        id: "sample_video_1",
-        title: "Sample Video 1 (Big Buck Bunny)",
-        youtubeId: "aqz-KE-bpKQ",
-        description: "Watch with your 24-hour full access pass."
-      },
-      {
-        id: "sample_video_2",
-        title: "Sample Video 2 (Nature Demo)",
-        youtubeId: "LXb3EKWsInQ",
-        description: "Watch nature demo video with your 24-hour pass."
-      }
+      { id: "sample_video_1", title: "Sample Video 1", youtubeId: "aqz-KE-bpKQ" },
+      { id: "sample_video_2", title: "Sample Video 2", youtubeId: "LXb3EKWsInQ" }
     ];
 
-    const UPI_ID = "yourname@upi"; // Replace with your actual UPI ID
-    let currentSelectedVideo = SAMPLE_VIDEOS[0];
-    let currentUser = null;
-
+    const UPI_ID = "yourname@upi";
     document.getElementById("logout-btn").addEventListener("click", logoutUser);
 
-    // Populate dropdown
-    const selectElem = document.getElementById("video-select");
-    SAMPLE_VIDEOS.forEach((vid, index) => {
-      const opt = document.createElement("option");
-      opt.value = index;
-      opt.innerText = vid.title;
-      selectElem.appendChild(opt);
-    });
-
-    selectElem.addEventListener("change", (e) => {
-      currentSelectedVideo = SAMPLE_VIDEOS[e.target.value];
-      if (currentUser) renderDashboard(currentUser);
-    });
-
-    // Monitor Auth
     monitorAuthState(
       async (user) => {
-        currentUser = user;
         document.getElementById("user-email").innerText = user.email;
         await renderDashboard(user);
       },
-      () => {
-        window.location.href = "index.html";
-      }
+      () => { window.location.href = "index.html"; }
     );
 
-    // 2. Render dynamic content based on global subscription state
     async function renderDashboard(user) {
       const container = document.getElementById("content-area");
-      
-      // Fetch single sitewide subscription document
       const subRef = doc(db, "users", user.uid, "subscription", "all_access");
       const snap = await getDoc(subRef);
 
@@ -102,9 +64,8 @@
 
       if (snap.exists()) {
         const data = snap.data();
-        if (data.status === "pending") {
-          status = "pending";
-        } else if (data.status === "active") {
+        if (data.status === "pending") status = "pending";
+        else if (data.status === "active") {
           const now = new Date();
           expiresAt = data.expiresAt ? data.expiresAt.toDate() : new Date();
           status = now < expiresAt ? "approved" : "expired";
@@ -113,52 +74,60 @@
 
       if (status === "approved") {
         const hoursLeft = Math.round((expiresAt - new Date()) / (1000 * 60 * 60));
-        container.innerHTML = `
-          <h3>${currentSelectedVideo.title}</h3>
-          <p style="color: green; font-weight: bold;">Full Access Active (~${hoursLeft} hours remaining)</p>
-          <div class="video-container">
-            <iframe src="https://www.youtube.com/embed/${currentSelectedVideo.youtubeId}?autoplay=1" allowfullscreen></iframe>
-          </div>
+        let gridHtml = `
+          <p style="color: green; font-weight: bold;">Full Access Active (~${hoursLeft}h remaining)</p>
+          <h3>Select a video to play in a new window:</h3>
+          <div class="gallery-grid">
         `;
+
+        SAMPLE_VIDEOS.forEach(vid => {
+          gridHtml += `
+            <div class="video-card">
+              <div class="thumb-container">
+                <img src="https://img.youtube.com/vi/${vid.youtubeId}/hqdefault.jpg" alt="${vid.title}">
+              </div>
+              <div class="card-info">
+                <h4>${vid.title}</h4>
+                <!-- Open in a new browser tab/window -->
+                <a href="https://www.youtube.com/embed/${vid.youtubeId}?autoplay=1" target="_blank" class="btn-open">▶ Play Video (New Window)</a>
+              </div>
+            </div>
+          `;
+        });
+
+        gridHtml += `</div>`;
+        container.innerHTML = gridHtml;
       } 
       else if (status === "pending") {
         container.innerHTML = `
           <div class="status-badge pending">Approval Pending</div>
           <h3>₹10 Payment Submitted</h3>
-          <p>Your payment request for full access to ALL videos is waiting for admin verification.</p>
-          <button id="check-status-btn" class="btn">Check Status</button>
+          <p>Your request for full 24-hour access is waiting for admin verification.</p>
+          <button onclick="window.location.reload()" class="btn">Check Status</button>
         `;
-
-        document.getElementById("check-status-btn").addEventListener("click", () => {
-          window.location.reload();
-        });
       } 
       else {
         const expiredNotice = status === "expired" ? `<div class="status-badge expired">Pass Expired</div>` : "";
-        
         container.innerHTML = `
           ${expiredNotice}
-          <h3>Unlock All Gallery Videos (24-Hour Pass)</h3>
-          <p>Pay <strong>₹10</strong> once to get unlimited 24-hour access to every video in the gallery.</p>
+          <h3>Unlock All Videos (24-Hour Pass)</h3>
+          <p>Pay <strong>₹10</strong> once to access all gallery videos.</p>
           <div style="background: #e9ecef; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
             <strong>Send ₹10 via UPI to:</strong> <span style="color: #d9534f; font-family: monospace;">${UPI_ID}</span>
           </div>
           <form id="payment-form">
-            <label for="txnId"><strong>Enter 12-digit UPI / UTR Reference Number:</strong></label>
+            <label for="txnId"><strong>12-digit UPI / UTR Reference Number:</strong></label>
             <input type="text" id="txnId" placeholder="e.g. 324156789012" required pattern="[A-Za-z0-9]{8,20}" />
-            <button type="submit" class="btn">Submit for 24h All-Access Pass</button>
+            <button type="submit" class="btn">Submit for 24h Pass</button>
           </form>
         `;
-
         document.getElementById("payment-form").addEventListener("submit", (e) => submitTransaction(e, user.uid, user.email));
       }
     }
 
-    // 3. Save single subscription transaction to Firestore
     async function submitTransaction(event, userId, userEmail) {
       event.preventDefault();
       const txnId = document.getElementById("txnId").value.trim();
-
       try {
         await setDoc(doc(db, "users", userId, "subscription", "all_access"), {
           plan: "24h_all_access",
@@ -167,11 +136,10 @@
           status: "pending",
           requestedAt: new Date()
         });
-
-        alert("Subscription payment submitted! Waiting for admin verification.");
-        await renderDashboard(currentUser);
+        alert("Payment submitted!");
+        window.location.reload();
       } catch (err) {
-        alert("Submission failed: " + err.message);
+        alert("Error: " + err.message);
       }
     }
   </script>

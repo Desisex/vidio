@@ -1,80 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel</title>
-    <link rel="stylesheet" href="css/admin.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Approval Panel</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+    .card { background: white; padding: 20px; border-radius: 8px; max-width: 800px; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #007bff; color: white; }
+    .btn-approve { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .btn-approve:hover { background: #218838; }
+    .btn-refresh { background: #17a2b8; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; float: right; }
+  </style>
 </head>
 <body>
-    <nav class="admin-nav">
-        <div class="nav-container">
-            <h1><i class="fas fa-crown"></i> Admin Panel</h1>
-            <div>
-                <span id="adminEmail"></span>
-                <button id="logoutBtn" class="btn-logout">Logout</button>
-            </div>
-        </div>
-    </nav>
 
-    <div class="admin-container">
-        <aside class="sidebar">
-            <ul>
-                <li class="active" data-tab="videos"><i class="fas fa-video"></i> Videos</li>
-                <li data-tab="upload"><i class="fas fa-upload"></i> Upload</li>
-                <li data-tab="payments"><i class="fas fa-credit-card"></i> Payments</li>
-                <li data-tab="users"><i class="fas fa-users"></i> Users</li>
-            </ul>
-        </aside>
+  <div class="card">
+    <button id="refresh-btn" class="btn-refresh">Refresh List</button>
+    <h2>Admin - Pending Access Requests</h2>
+    <p>Approve user transactions to grant 24-hour video access.</p>
 
-        <main class="admin-content">
-            <!-- Videos Tab -->
-            <div id="videosTab" class="tab-content active">
-                <h2>Manage Videos</h2>
-                <div id="pendingVideos">
-                    <h3>Pending Approval</h3>
-                    <div id="pendingList"></div>
-                </div>
-                <div id="approvedVideos">
-                    <h3>Approved Videos</h3>
-                    <div id="approvedList"></div>
-                </div>
-            </div>
+    <div id="loading">Loading requests...</div>
+    
+    <table id="requests-table" style="display: none;">
+      <thead>
+        <tr>
+          <th>User Email</th>
+          <th>Video ID</th>
+          <th>Txn ID / UTR</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
 
-            <!-- Upload Tab -->
-            <div id="uploadTab" class="tab-content">
-                <h2>Upload New Video</h2>
-                <form id="uploadForm">
-                    <input type="text" id="videoTitle" placeholder="Video Title" required>
-                    <textarea id="videoDescription" placeholder="Video Description"></textarea>
-                    <input type="url" id="videoUrl" placeholder="Video URL (YouTube/Vimeo)" required>
-                    <input type="url" id="thumbnailUrl" placeholder="Thumbnail URL">
-                    <label>
-                        <input type="checkbox" id="isHighlight"> Mark as Highlight
-                    </label>
-                    <button type="submit">Upload Video</button>
-                </form>
-            </div>
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import { collectionGroup, query, where, getDocs, doc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-            <!-- Payments Tab -->
-            <div id="paymentsTab" class="tab-content">
-                <h2>Payment History</h2>
-                <div id="paymentsList"></div>
-            </div>
+    const loadingElem = document.getElementById("loading");
+    const tableElem = document.getElementById("requests-table");
+    const tableBody = document.getElementById("table-body");
+    const refreshBtn = document.getElementById("refresh-btn");
 
-            <!-- Users Tab -->
-            <div id="usersTab" class="tab-content">
-                <h2>User Management</h2>
-                <div id="usersList"></div>
-            </div>
-        </main>
-    </div>
+    refreshBtn.addEventListener("click", loadPendingRequests);
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script src="js/firebase-config.js"></script>
-    <script src="js/admin.js"></script>
+    async function loadPendingRequests() {
+      loadingElem.style.display = "block";
+      tableElem.style.display = "none";
+      tableBody.innerHTML = "";
+
+      try {
+        // Query all 'access' subcollections across all users where status is 'pending'
+        const q = query(collectionGroup(db, "access"), where("status", "==", "pending"));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          loadingElem.innerText = "No pending approval requests found.";
+          return;
+        }
+
+        loadingElem.style.display = "none";
+        tableElem.style.display = "table";
+
+        querySnapshot.forEach((documentSnap) => {
+          const data = documentSnap.data();
+          const docRef = documentSnap.ref;
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${data.userEmail || "Unknown User"}</td>
+            <td>${data.videoId || "Video"}</td>
+            <td><strong>${data.txnId || "N/A"}</strong></td>
+            <td>
+              <button class="btn-approve" data-path="${docRef.path}">Approve (Grant 24h)</button>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+
+        // Attach event handlers to dynamic approve buttons
+        document.querySelectorAll(".btn-approve").forEach(button => {
+          button.addEventListener("click", async (e) => {
+            const path = e.target.getAttribute("data-path");
+            await approveRequest(path);
+          });
+        });
+
+      } catch (err) {
+        loadingElem.innerText = "Error loading requests: " + err.message;
+      }
+    }
+
+    // Grant 24-hour access by calculating expiration time
+    async function approveRequest(docPath) {
+      try {
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Current time + 24 Hours
+
+        await updateDoc(doc(db, docPath), {
+          status: "active",
+          approvedAt: Timestamp.fromDate(now),
+          expiresAt: Timestamp.fromDate(expiresAt)
+        });
+
+        alert("Access approved for 24 hours!");
+        await loadPendingRequests();
+      } catch (err) {
+        alert("Failed to approve: " + err.message);
+      }
+    }
+
+    // Initial fetch on page load
+    loadPendingRequests();
+  </script>
 </body>
 </html>

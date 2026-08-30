@@ -1,21 +1,20 @@
-// Import the Firebase SDK modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Your Firebase configuration object
+// Your real web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDeY_GfWUbs5_2N65nBUnaq-_LISaRXHgc",
+  authDomain: "vidio-app-da061.firebaseapp.com",
+  projectId: "vidio-app-da061",
+  storageBucket: "vidio-app-da061.firebasestorage.app",
+  messagingSenderId: "568321387275",
+  appId: "1:568321387275:web:3f7c3e12fd1c007238100e"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export Auth and Firestore for use in other files
+// Export Auth and Firestore services for auth.js and dashboard.html
 export const auth = getAuth(app);
 export const db = getFirestore(app);

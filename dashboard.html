@@ -28,7 +28,7 @@
 
     <hr style="margin: 20px 0;">
 
-    <label for="video-select"><strong>Select Sample Video:</strong></label>
+    <label for="video-select"><strong>Select Video Gallery:</strong></label>
     <select id="video-select"></select>
 
     <div id="content-area">
@@ -41,29 +41,29 @@
     import { monitorAuthState, logoutUser } from "./auth.js";
     import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 1. List of sample videos for testing
+    // 1. Gallery Videos
     const SAMPLE_VIDEOS = [
       {
         id: "sample_video_1",
         title: "Sample Video 1 (Big Buck Bunny)",
         youtubeId: "aqz-KE-bpKQ",
-        description: "Watch the full 24-hour video after payment approval."
+        description: "Watch with your 24-hour full access pass."
       },
       {
         id: "sample_video_2",
         title: "Sample Video 2 (Nature Demo)",
         youtubeId: "LXb3EKWsInQ",
-        description: "Watch nature demo video after payment approval."
+        description: "Watch nature demo video with your 24-hour pass."
       }
     ];
 
-    const UPI_ID = "yourname@upi"; // Your payment UPI ID
+    const UPI_ID = "yourname@upi"; // Replace with your actual UPI ID
     let currentSelectedVideo = SAMPLE_VIDEOS[0];
     let currentUser = null;
 
     document.getElementById("logout-btn").addEventListener("click", logoutUser);
 
-    // Populate video dropdown menu
+    // Populate dropdown
     const selectElem = document.getElementById("video-select");
     SAMPLE_VIDEOS.forEach((vid, index) => {
       const opt = document.createElement("option");
@@ -77,7 +77,7 @@
       if (currentUser) renderDashboard(currentUser);
     });
 
-    // 2. Monitor Auth State
+    // Monitor Auth
     monitorAuthState(
       async (user) => {
         currentUser = user;
@@ -89,11 +89,13 @@
       }
     );
 
-    // 3. Render dynamic content based on selected sample video
+    // 2. Render dynamic content based on global subscription state
     async function renderDashboard(user) {
       const container = document.getElementById("content-area");
-      const accessRef = doc(db, "users", user.uid, "access", currentSelectedVideo.id);
-      const snap = await getDoc(accessRef);
+      
+      // Fetch single sitewide subscription document
+      const subRef = doc(db, "users", user.uid, "subscription", "all_access");
+      const snap = await getDoc(subRef);
 
       let status = "none";
       let expiresAt = null;
@@ -104,16 +106,16 @@
           status = "pending";
         } else if (data.status === "active") {
           const now = new Date();
-          expiresAt = data.expiresAt.toDate();
+          expiresAt = data.expiresAt ? data.expiresAt.toDate() : new Date();
           status = now < expiresAt ? "approved" : "expired";
         }
       }
 
       if (status === "approved") {
-        const timeLeft = Math.round((expiresAt - new Date()) / (1000 * 60 * 60));
+        const hoursLeft = Math.round((expiresAt - new Date()) / (1000 * 60 * 60));
         container.innerHTML = `
           <h3>${currentSelectedVideo.title}</h3>
-          <p style="color: green;"><strong>Access Expires In:</strong> ~${timeLeft} hours</p>
+          <p style="color: green; font-weight: bold;">Full Access Active (~${hoursLeft} hours remaining)</p>
           <div class="video-container">
             <iframe src="https://www.youtube.com/embed/${currentSelectedVideo.youtubeId}?autoplay=1" allowfullscreen></iframe>
           </div>
@@ -122,8 +124,8 @@
       else if (status === "pending") {
         container.innerHTML = `
           <div class="status-badge pending">Approval Pending</div>
-          <h3>Payment Submitted for ${currentSelectedVideo.title}</h3>
-          <p>Your payment request is waiting for admin verification. Once verified, this video will unlock automatically for 24 hours.</p>
+          <h3>₹10 Payment Submitted</h3>
+          <p>Your payment request for full access to ALL videos is waiting for admin verification.</p>
           <button id="check-status-btn" class="btn">Check Status</button>
         `;
 
@@ -136,16 +138,15 @@
         
         container.innerHTML = `
           ${expiredNotice}
-          <h3>${currentSelectedVideo.title} (Template Preview)</h3>
-          <p>${currentSelectedVideo.description}</p>
-          <p>Pay <strong>₹10</strong> via UPI to get 24-hour access to the full video.</p>
+          <h3>Unlock All Gallery Videos (24-Hour Pass)</h3>
+          <p>Pay <strong>₹10</strong> once to get unlimited 24-hour access to every video in the gallery.</p>
           <div style="background: #e9ecef; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
-            <strong>Send ₹10 to UPI ID:</strong> <span style="color: #d9534f; font-family: monospace;">${UPI_ID}</span>
+            <strong>Send ₹10 via UPI to:</strong> <span style="color: #d9534f; font-family: monospace;">${UPI_ID}</span>
           </div>
           <form id="payment-form">
             <label for="txnId"><strong>Enter 12-digit UPI / UTR Reference Number:</strong></label>
             <input type="text" id="txnId" placeholder="e.g. 324156789012" required pattern="[A-Za-z0-9]{8,20}" />
-            <button type="submit" class="btn">Submit Transaction ID</button>
+            <button type="submit" class="btn">Submit for 24h All-Access Pass</button>
           </form>
         `;
 
@@ -153,22 +154,21 @@
       }
     }
 
-    // 4. Save transaction to Firestore for current video
+    // 3. Save single subscription transaction to Firestore
     async function submitTransaction(event, userId, userEmail) {
       event.preventDefault();
       const txnId = document.getElementById("txnId").value.trim();
 
       try {
-        await setDoc(doc(db, "users", userId, "access", currentSelectedVideo.id), {
-          videoId: currentSelectedVideo.id,
-          videoTitle: currentSelectedVideo.title,
+        await setDoc(doc(db, "users", userId, "subscription", "all_access"), {
+          plan: "24h_all_access",
           txnId: txnId,
           userEmail: userEmail,
           status: "pending",
           requestedAt: new Date()
         });
 
-        alert(`Transaction submitted for ${currentSelectedVideo.title}!`);
+        alert("Subscription payment submitted! Waiting for admin verification.");
         await renderDashboard(currentUser);
       } catch (err) {
         alert("Submission failed: " + err.message);

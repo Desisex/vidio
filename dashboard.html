@@ -6,15 +6,16 @@
   <title>Video Dashboard</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; }
-    .card { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .card { background: white; padding: 20px; border-radius: 8px; max-width: 650px; margin: 0 auto 20px auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
     .btn:hover { background: #0056b3; }
     .status-badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; margin-bottom: 15px; }
     .pending { background: #fff3cd; color: #856404; }
     .expired { background: #f8d7da; color: #721c24; }
-    .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; }
+    .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; border-radius: 6px; }
     .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
     input[type="text"] { width: 95%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+    select { padding: 8px; width: 100%; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -27,6 +28,9 @@
 
     <hr style="margin: 20px 0;">
 
+    <label for="video-select"><strong>Select Sample Video:</strong></label>
+    <select id="video-select"></select>
+
     <div id="content-area">
       <p>Checking access status...</p>
     </div>
@@ -37,30 +41,58 @@
     import { monitorAuthState, logoutUser } from "./auth.js";
     import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Set the target video settings
-    const TARGET_VIDEO_ID = "sample_video_1";
-    const YOUTUBE_VIDEO_ID = "YOUR_YOUTUBE_VIDEO_ID_HERE"; // Replace with your unlisted YouTube video ID
-    const UPI_ID = "yourname@upi"; // Replace with your actual UPI ID
+    // 1. List of sample videos for testing
+    const SAMPLE_VIDEOS = [
+      {
+        id: "sample_video_1",
+        title: "Sample Video 1 (Big Buck Bunny)",
+        youtubeId: "aqz-KE-bpKQ",
+        description: "Watch the full 24-hour video after payment approval."
+      },
+      {
+        id: "sample_video_2",
+        title: "Sample Video 2 (Nature Demo)",
+        youtubeId: "LXb3EKWsInQ",
+        description: "Watch nature demo video after payment approval."
+      }
+    ];
 
-    // Attach logout event
+    const UPI_ID = "yourname@upi"; // Your payment UPI ID
+    let currentSelectedVideo = SAMPLE_VIDEOS[0];
+    let currentUser = null;
+
     document.getElementById("logout-btn").addEventListener("click", logoutUser);
 
-    // 1. Monitor Authentication State
+    // Populate video dropdown menu
+    const selectElem = document.getElementById("video-select");
+    SAMPLE_VIDEOS.forEach((vid, index) => {
+      const opt = document.createElement("option");
+      opt.value = index;
+      opt.innerText = vid.title;
+      selectElem.appendChild(opt);
+    });
+
+    selectElem.addEventListener("change", (e) => {
+      currentSelectedVideo = SAMPLE_VIDEOS[e.target.value];
+      if (currentUser) renderDashboard(currentUser);
+    });
+
+    // 2. Monitor Auth State
     monitorAuthState(
       async (user) => {
+        currentUser = user;
         document.getElementById("user-email").innerText = user.email;
         await renderDashboard(user);
       },
       () => {
-        // Redirect to login if not authenticated
         window.location.href = "index.html";
       }
     );
 
-    // 2. Fetch status and render core content UI
+    // 3. Render dynamic content based on selected sample video
     async function renderDashboard(user) {
       const container = document.getElementById("content-area");
-      const accessRef = doc(db, "users", user.uid, "access", TARGET_VIDEO_ID);
+      const accessRef = doc(db, "users", user.uid, "access", currentSelectedVideo.id);
       const snap = await getDoc(accessRef);
 
       let status = "none";
@@ -77,22 +109,21 @@
         }
       }
 
-      // State UI Rendering logic
       if (status === "approved") {
         const timeLeft = Math.round((expiresAt - new Date()) / (1000 * 60 * 60));
         container.innerHTML = `
-          <h3>Full Video Access Unlocked</h3>
+          <h3>${currentSelectedVideo.title}</h3>
           <p style="color: green;"><strong>Access Expires In:</strong> ~${timeLeft} hours</p>
           <div class="video-container">
-            <iframe src="https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}?autoplay=1" allowfullscreen></iframe>
+            <iframe src="https://www.youtube.com/embed/${currentSelectedVideo.youtubeId}?autoplay=1" allowfullscreen></iframe>
           </div>
         `;
       } 
       else if (status === "pending") {
         container.innerHTML = `
           <div class="status-badge pending">Approval Pending</div>
-          <h3>Payment Submitted</h3>
-          <p>Your payment request is waiting for admin verification. Once verified, the video will unlock automatically for 24 hours.</p>
+          <h3>Payment Submitted for ${currentSelectedVideo.title}</h3>
+          <p>Your payment request is waiting for admin verification. Once verified, this video will unlock automatically for 24 hours.</p>
           <button id="check-status-btn" class="btn">Check Status</button>
         `;
 
@@ -101,12 +132,12 @@
         });
       } 
       else {
-        // State is either 'none' or 'expired'
         const expiredNotice = status === "expired" ? `<div class="status-badge expired">Pass Expired</div>` : "";
         
         container.innerHTML = `
           ${expiredNotice}
-          <h3>Unlock Premium Video Pass</h3>
+          <h3>${currentSelectedVideo.title} (Template Preview)</h3>
+          <p>${currentSelectedVideo.description}</p>
           <p>Pay <strong>₹10</strong> via UPI to get 24-hour access to the full video.</p>
           <div style="background: #e9ecef; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
             <strong>Send ₹10 to UPI ID:</strong> <span style="color: #d9534f; font-family: monospace;">${UPI_ID}</span>
@@ -118,27 +149,27 @@
           </form>
         `;
 
-        // Attach submission handler to the payment form
         document.getElementById("payment-form").addEventListener("submit", (e) => submitTransaction(e, user.uid, user.email));
       }
     }
 
-    // 3. Store payment request in Firestore
+    // 4. Save transaction to Firestore for current video
     async function submitTransaction(event, userId, userEmail) {
       event.preventDefault();
       const txnId = document.getElementById("txnId").value.trim();
 
       try {
-        await setDoc(doc(db, "users", userId, "access", TARGET_VIDEO_ID), {
-          videoId: TARGET_VIDEO_ID,
+        await setDoc(doc(db, "users", userId, "access", currentSelectedVideo.id), {
+          videoId: currentSelectedVideo.id,
+          videoTitle: currentSelectedVideo.title,
           txnId: txnId,
           userEmail: userEmail,
           status: "pending",
           requestedAt: new Date()
         });
 
-        alert("Transaction ID submitted successfully!");
-        window.location.reload();
+        alert(`Transaction submitted for ${currentSelectedVideo.title}!`);
+        await renderDashboard(currentUser);
       } catch (err) {
         alert("Submission failed: " + err.message);
       }

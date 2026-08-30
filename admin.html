@@ -19,8 +19,8 @@
 
   <div class="card">
     <button id="refresh-btn" class="btn-refresh">Refresh List</button>
-    <h2>Admin - Pending Access Requests</h2>
-    <p>Approve user payment transactions to grant 24-hour video access.</p>
+    <h2>Admin - All-Access Pass Approvals</h2>
+    <p>Approve ₹10 payment transactions to grant users 24-hour access to ALL videos.</p>
 
     <div id="loading">Loading requests...</div>
     
@@ -28,7 +28,7 @@
       <thead>
         <tr>
           <th>User Email</th>
-          <th>Video ID</th>
+          <th>Access Type</th>
           <th>Txn ID / UTR</th>
           <th>Action</th>
         </tr>
@@ -39,7 +39,7 @@
 
   <script type="module">
     import { db } from "./firebase-config.js";
-    import { collection, collectionGroup, getDocs, doc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collectionGroup, getDocs, doc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const loadingElem = document.getElementById("loading");
     const tableElem = document.getElementById("requests-table");
@@ -54,8 +54,8 @@
       tableBody.innerHTML = "";
 
       try {
-        // Fetch all documents across all access subcollections directly
-        const querySnapshot = await getDocs(collectionGroup(db, "access"));
+        // Query all subscription documents
+        const querySnapshot = await getDocs(collectionGroup(db, "subscription"));
         let pendingCount = 0;
 
         querySnapshot.forEach((documentSnap) => {
@@ -66,7 +66,7 @@
             const row = document.createElement("tr");
             row.innerHTML = `
               <td>${data.userEmail || "Unknown User"}</td>
-              <td>${data.videoId || documentSnap.id}</td>
+              <td><strong>24-Hour All Access Pass</strong></td>
               <td><strong>${data.txnId || "N/A"}</strong></td>
               <td>
                 <button class="btn-approve" data-path="${documentSnap.ref.path}">Approve (Grant 24h)</button>
@@ -99,7 +99,7 @@
     async function approveRequest(docPath) {
       try {
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 Hours
 
         await updateDoc(doc(db, docPath), {
           status: "active",
@@ -107,7 +107,7 @@
           expiresAt: Timestamp.fromDate(expiresAt)
         });
 
-        alert("Access approved! 24-hour pass activated.");
+        alert("Access approved! The user can now watch all videos for 24 hours.");
         await loadPendingRequests();
       } catch (err) {
         alert("Failed to approve: " + err.message);

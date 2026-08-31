@@ -12,12 +12,13 @@
     .btn-register { background: #28a745; color: white; }
     
     .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; }
-    .video-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; }
+    .video-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s ease-in-out; }
+    .video-card:hover { transform: translateY(-3px); }
     .video-preview { position: relative; padding-bottom: 56.25%; height: 0; pointer-events: none; }
     .video-preview iframe { position: absolute; top:0; left:0; width:100%; height:100%; border:0; }
     .card-body { padding: 15px; }
     .card-body h3 { margin: 0 0 10px 0; font-size: 1.1rem; }
-    .btn-watch { display: block; width: 100%; text-align: center; padding: 10px 0; background: #ff4757; color: white; border: none; border-radius: 4px; font-weight: bold; }
+    .btn-watch { display: block; width: 100%; text-align: center; padding: 10px 0; background: #ff4757; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -36,26 +37,27 @@
     import { auth } from "./firebase-config.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+    // Replace previewId with your YouTube Video IDs
     const GALLERY_VIDEOS = [
-      { id: "vid_1", title: " Video 1", previewId: "aqz-KE-bpKQ" },
-      { id: "vid_2", title: " Video 2", previewId: "LXb3EKWsInQ" },
-      { id: "vid_3", title: " Video 3", previewId: "LXb3EKWsInQ" },
-      { id: "vid_4", title: " Video 4", previewId: "LXb3EKWsInQ" },
-      { id: "vid_5", title: " Video 5", previewId: "LXb3EKWsInQ" },
-      { id: "vid_6", title: " Video 6", previewId: "LXb3EKWsInQ" },
-      { id: "vid_7", title: " Video 7", previewId: "LXb3EKWsInQ" },
-      { id: "vid_8", title: " Video 8", previewId: "LXb3EKWsInQ" },
-      { id: "vid_9", title: " Video 9", previewId: "LXb3EKWsInQ" },
-      { id: "vid_10", title: " Video 10", previewId: "LXb3EKWsInQ" },
-      { id: "vid_11", title: " Video 11", previewId: "LXb3EKWsInQ" },
-      { id: "vid_12", title: " Video 12", previewId: "LXb3EKWsInQ" },
-      { id: "vid_13", title: " Video 13", previewId: "LXb3EKWsInQ" },
-      { id: "vid_14", title: " Video 14", previewId: "LXb3EKWsInQ" },
-      { id: "vid_15", title: " Video 15", previewId: "LXb3EKWsInQ" },
-      { id: "vid_16", title: " Video 16", previewId: "LXb3EKWsInQ" },
-      { id: "vid_17", title: " Video 17", previewId: "LXb3EKWsInQ" },
-      { id: "vid_18", title: " Video 18", previewId: "LXb3EKWsInQ" },
-      { id: "vid_19", title: " Video 19", previewId: "LXb3EKWsInQ" },
+      { id: "vid_1", title: "Video 1", previewId: "aqz-KE-bpKQ" },
+      { id: "vid_2", title: "Video 2", previewId: "LXb3EKWsInQ" },
+      { id: "vid_3", title: "Video 3", previewId: "LXb3EKWsInQ" },
+      { id: "vid_4", title: "Video 4", previewId: "LXb3EKWsInQ" },
+      { id: "vid_5", title: "Video 5", previewId: "LXb3EKWsInQ" },
+      { id: "vid_6", title: "Video 6", previewId: "LXb3EKWsInQ" },
+      { id: "vid_7", title: "Video 7", previewId: "LXb3EKWsInQ" },
+      { id: "vid_8", title: "Video 8", previewId: "LXb3EKWsInQ" },
+      { id: "vid_9", title: "Video 9", previewId: "LXb3EKWsInQ" },
+      { id: "vid_10", title: "Video 10", previewId: "LXb3EKWsInQ" },
+      { id: "vid_11", title: "Video 11", previewId: "LXb3EKWsInQ" },
+      { id: "vid_12", title: "Video 12", previewId: "LXb3EKWsInQ" },
+      { id: "vid_13", title: "Video 13", previewId: "LXb3EKWsInQ" },
+      { id: "vid_14", title: "Video 14", previewId: "LXb3EKWsInQ" },
+      { id: "vid_15", title: "Video 15", previewId: "LXb3EKWsInQ" },
+      { id: "vid_16", title: "Video 16", previewId: "LXb3EKWsInQ" },
+      { id: "vid_17", title: "Video 17", previewId: "LXb3EKWsInQ" },
+      { id: "vid_18", title: "Video 18", previewId: "LXb3EKWsInQ" },
+      { id: "vid_19", title: "Video 19", previewId: "LXb3EKWsInQ" }
     ];
 
     const galleryElem = document.getElementById("gallery");
@@ -63,6 +65,7 @@
     GALLERY_VIDEOS.forEach(video => {
       const card = document.createElement("div");
       card.className = "video-card";
+      
       // Auto-play, muted, loop, starting at 0 and ending at 6 seconds
       card.innerHTML = `
         <div class="video-preview">

@@ -46,17 +46,35 @@
     import { monitorAuthState, logoutUser } from "./auth.js";
     import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+    // Matching full videos for all 19 items
     const SAMPLE_VIDEOS = [
-      { id: "sample_video_1", title: "Sample Video 1", youtubeId: "aqz-KE-bpKQ" },
-      { id: "sample_video_2", title: "Sample Video 2", youtubeId: "LXb3EKWsInQ" }
+      { id: "sample_video_1", title: "Video 1", youtubeId: "aqz-KE-bpKQ" },
+      { id: "sample_video_2", title: "Video 2", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_3", title: "Video 3", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_4", title: "Video 4", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_5", title: "Video 5", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_6", title: "Video 6", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_7", title: "Video 7", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_8", title: "Video 8", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_9", title: "Video 9", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_10", title: "Video 10", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_11", title: "Video 11", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_12", title: "Video 12", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_13", title: "Video 13", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_14", title: "Video 14", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_15", title: "Video 15", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_16", title: "Video 16", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_17", title: "Video 17", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_18", title: "Video 18", youtubeId: "LXb3EKWsInQ" },
+      { id: "sample_video_19", title: "Video 19", youtubeId: "LXb3EKWsInQ" }
     ];
 
     // Payee details
     const PAYEE_NAME = "THONGAM JITEN SINGH";
     const UPI_ID = "7005407082@paytm";
-    const AMOUNT = "5"; // Pre-filled amount set to 5
+    const AMOUNT = "10"; // Updated to ₹10
 
-    // Generate standard UPI URL string
+    // Generate standard UPI URL string for auto-filling ₹10
     const upiUrl = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${AMOUNT}&cu=INR&tn=${encodeURIComponent('24h Video Pass')}`;
 
     document.getElementById("logout-btn").addEventListener("click", logoutUser);
@@ -115,7 +133,7 @@
       else if (status === "pending") {
         container.innerHTML = `
           <div class="status-badge pending">Approval Pending</div>
-          <h3>₹5 Payment Submitted</h3>
+          <h3>₹10 Payment Submitted</h3>
           <p>Your request for full 24-hour access is waiting for admin verification.</p>
           <button onclick="window.location.reload()" class="btn">Check Status</button>
         `;
@@ -125,11 +143,11 @@
         container.innerHTML = `
           ${expiredNotice}
           <h3>Unlock All Videos (24-Hour Pass)</h3>
-          <p>Pay <strong>₹5</strong> once using any UPI app to unlock every video in the gallery for 24 hours.</p>
+          <p>Pay <strong>₹10</strong> once using any UPI app to unlock every video in the gallery for 24 hours.</p>
           
           <div class="payment-box">
-            <!-- Deep Link Button for Mobile Users -->
-            <a href="${upiUrl}" class="btn-upi-link">📲 Tap Here to Pay ₹5 via Any UPI App</a>
+            <!-- Mobile Deep Link Button -->
+            <a href="${upiUrl}" class="btn-upi-link">📲 Tap Here to Pay ₹10 via Any UPI App</a>
             
             <p style="margin: 15px 0 5px 0;"><strong>Or Scan QR Code / Pay manually:</strong></p>
             <p style="margin: 0; color: #555;">Name: <strong>${PAYEE_NAME}</strong></p>

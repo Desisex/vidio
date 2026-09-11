@@ -14,8 +14,8 @@
     .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; }
     .video-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s ease-in-out; }
     .video-card:hover { transform: translateY(-3px); }
-    .video-preview { position: relative; padding-bottom: 56.25%; height: 0; pointer-events: none; }
-    .video-preview iframe { position: absolute; top:0; left:0; width:100%; height:100%; border:0; }
+    .video-preview { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000; pointer-events: none; }
+    .video-preview video { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; border:0; }
     .card-body { padding: 15px; }
     .card-body h3 { margin: 0 0 10px 0; font-size: 1.1rem; }
     .btn-watch { display: block; width: 100%; text-align: center; padding: 10px 0; background: #ff4757; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
@@ -37,27 +37,29 @@
     import { auth } from "./firebase-config.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // Replace previewId with your YouTube Video IDs
+    // Direct Google Drive Stream Link using your File ID
+    const DRIVE_STREAM_URL = "https://drive.google.com/uc?export=download&id=1dBlgYQjtBmecpYzzqMsCFC9m9kYltPj2";
+
     const GALLERY_VIDEOS = [
-      { id: "vid_1", title: "Video 1", previewId: "SkMURhQmcS8" },
-      { id: "vid_2", title: "Video 2", previewId: "rzZMwMZhz3k" },
-      { id: "vid_3", title: "Video 3", previewId: "LXb3EKWsInQ" },
-      { id: "vid_4", title: "Video 4", previewId: "DUhaY_NUq1A" },
-      { id: "vid_5", title: "Video 5", previewId: "LXb3EKWsInQ" },
-      { id: "vid_6", title: "Video 6", previewId: "LXb3EKWsInQ" },
-      { id: "vid_7", title: "Video 7", previewId: "LXb3EKWsInQ" },
-      { id: "vid_8", title: "Video 8", previewId: "LXb3EKWsInQ" },
-      { id: "vid_9", title: "Video 9", previewId: "LXb3EKWsInQ" },
-      { id: "vid_10", title: "Video 10", previewId: "LXb3EKWsInQ" },
-      { id: "vid_11", title: "Video 11", previewId: "LXb3EKWsInQ" },
-      { id: "vid_12", title: "Video 12", previewId: "LXb3EKWsInQ" },
-      { id: "vid_13", title: "Video 13", previewId: "LXb3EKWsInQ" },
-      { id: "vid_14", title: "Video 14", previewId: "LXb3EKWsInQ" },
-      { id: "vid_15", title: "Video 15", previewId: "LXb3EKWsInQ" },
-      { id: "vid_16", title: "Video 16", previewId: "LXb3EKWsInQ" },
-      { id: "vid_17", title: "Video 17", previewId: "LXb3EKWsInQ" },
-      { id: "vid_18", title: "Video 18", previewId: "LXb3EKWsInQ" },
-      { id: "vid_19", title: "Video 19", previewId: "LXb3EKWsInQ" }
+      { id: "vid_1", title: "Video 1", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_2", title: "Video 2", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_3", title: "Video 3", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_4", title: "Video 4", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_5", title: "Video 5", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_6", title: "Video 6", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_7", title: "Video 7", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_8", title: "Video 8", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_9", title: "Video 9", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_10", title: "Video 10", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_11", title: "Video 11", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_12", title: "Video 12", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_13", title: "Video 13", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_14", title: "Video 14", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_15", title: "Video 15", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_16", title: "Video 16", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_17", title: "Video 17", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_18", title: "Video 18", videoUrl: DRIVE_STREAM_URL },
+      { id: "vid_19", title: "Video 19", videoUrl: DRIVE_STREAM_URL }
     ];
 
     const galleryElem = document.getElementById("gallery");
@@ -66,10 +68,10 @@
       const card = document.createElement("div");
       card.className = "video-card";
       
-      // Auto-play, muted, loop, starting at 0 and ending at 6 seconds
+      // HTML5 Video tag: Auto-plays muted clip truncated to 6 seconds (#t=0,6)
       card.innerHTML = `
         <div class="video-preview">
-          <iframe src="https://www.youtube.com/embed/${video.previewId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.previewId}&start=0&end=6" allow="autoplay"></iframe>
+          <video src="${video.videoUrl}#t=0,6" autoplay muted loop playsinline></video>
         </div>
         <div class="card-body">
           <h3>${video.title}</h3>

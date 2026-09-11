@@ -16,14 +16,13 @@
     .qr-img { width: 220px; height: auto; border-radius: 8px; margin: 10px 0; border: 1px solid #ddd; }
     .upi-details { font-family: monospace; font-size: 1.1rem; color: #d9534f; font-weight: bold; background: #fff; padding: 6px 12px; border-radius: 4px; border: 1px dashed #d9534f; display: inline-block; margin: 5px 0; }
     
-    /* Mobile UPI Deep Link Button */
     .btn-upi-link { display: inline-block; width: 90%; max-width: 320px; text-align: center; padding: 12px 0; background: #28a745; color: white; border-radius: 6px; font-weight: bold; text-decoration: none; font-size: 1.05rem; margin: 10px 0; box-shadow: 0 3px 6px rgba(40,167,69,0.3); }
     .btn-upi-link:hover { background: #218838; }
 
     .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
     .video-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .thumb-container { position: relative; padding-bottom: 56.25%; height: 0; background: #000; }
-    .thumb-container img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; }
+    .thumb-container { position: relative; padding-bottom: 56.25%; height: 0; background: #000; overflow: hidden; }
+    .thumb-container video { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; }
     .card-info { padding: 15px; }
     .btn-open { display: block; text-align: center; padding: 10px; background: #28a745; color: white; border-radius: 4px; text-decoration: none; font-weight: bold; margin-top: 10px; }
     input[type="text"] { width: 95%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
@@ -46,35 +45,35 @@
     import { monitorAuthState, logoutUser } from "./auth.js";
     import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Matching full videos for all 19 items
+    // Direct Google Drive Stream Link using your File ID
+    const DRIVE_STREAM_URL = "https://drive.google.com/uc?export=download&id=1dBlgYQjtBmecpYzzqMsCFC9m9kYltPj2";
+
     const SAMPLE_VIDEOS = [
-      { id: "sample_video_1", title: "Video 1", youtubeId: "SkMURhQmcS8" },
-      { id: "sample_video_2", title: "Video 2", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_3", title: "Video 3", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_4", title: "Video 4", youtubeId: "DUhaY_NUq1A" },
-      { id: "sample_video_5", title: "Video 5", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_6", title: "Video 6", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_7", title: "Video 7", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_8", title: "Video 8", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_9", title: "Video 9", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_10", title: "Video 10", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_11", title: "Video 11", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_12", title: "Video 12", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_13", title: "Video 13", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_14", title: "Video 14", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_15", title: "Video 15", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_16", title: "Video 16", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_17", title: "Video 17", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_18", title: "Video 18", youtubeId: "LXb3EKWsInQ" },
-      { id: "sample_video_19", title: "Video 19", youtubeId: "LXb3EKWsInQ" }
+      { id: "sample_video_1", title: "Video 1", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_2", title: "Video 2", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_3", title: "Video 3", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_4", title: "Video 4", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_5", title: "Video 5", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_6", title: "Video 6", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_7", title: "Video 7", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_8", title: "Video 8", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_9", title: "Video 9", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_10", title: "Video 10", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_11", title: "Video 11", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_12", title: "Video 12", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_13", title: "Video 13", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_14", title: "Video 14", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_15", title: "Video 15", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_16", title: "Video 16", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_17", title: "Video 17", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_18", title: "Video 18", videoUrl: DRIVE_STREAM_URL },
+      { id: "sample_video_19", title: "Video 19", videoUrl: DRIVE_STREAM_URL }
     ];
 
-    // Payee details
     const PAYEE_NAME = "THONGAM JITEN SINGH";
     const UPI_ID = "7005407082@paytm";
-    const AMOUNT = "10"; // Updated to ₹10
+    const AMOUNT = "10";
 
-    // Generate standard UPI URL string for auto-filling ₹10
     const upiUrl = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${AMOUNT}&cu=INR&tn=${encodeURIComponent('24h Video Pass')}`;
 
     document.getElementById("logout-btn").addEventListener("click", logoutUser);
@@ -109,7 +108,7 @@
         const hoursLeft = Math.round((expiresAt - new Date()) / (1000 * 60 * 60));
         let gridHtml = `
           <p style="color: green; font-weight: bold;">Full Access Active (~${hoursLeft}h remaining)</p>
-          <h3>Select a video to play in a new window:</h3>
+          <h3>Select a video to play:</h3>
           <div class="gallery-grid">
         `;
 
@@ -117,11 +116,11 @@
           gridHtml += `
             <div class="video-card">
               <div class="thumb-container">
-                <img src="https://img.youtube.com/vi/${vid.youtubeId}/hqdefault.jpg" alt="${vid.title}">
+                <video src="${vid.videoUrl}#t=0,1" muted preload="metadata"></video>
               </div>
               <div class="card-info">
                 <h4>${vid.title}</h4>
-                <a href="https://www.youtube.com/embed/${vid.youtubeId}?autoplay=1" target="_blank" class="btn-open">▶ Play Video (New Window)</a>
+                <a href="${vid.videoUrl}" target="_blank" class="btn-open">▶ Play Full Video (New Window)</a>
               </div>
             </div>
           `;
@@ -146,7 +145,6 @@
           <p>Pay <strong>₹10</strong> once using any UPI app to unlock every video in the gallery for 24 hours.</p>
           
           <div class="payment-box">
-            <!-- Mobile Deep Link Button -->
             <a href="${upiUrl}" class="btn-upi-link">📲 Tap Here to Pay ₹10 via Any UPI App</a>
             
             <p style="margin: 15px 0 5px 0;"><strong>Or Scan QR Code / Pay manually:</strong></p>
